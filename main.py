@@ -1,5 +1,7 @@
 from collections import OrderedDict
+import itertools
 
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
@@ -16,6 +18,7 @@ db_names = OrderedDict({
 })
 
 required_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
+target_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 
 def load_hiseq_data(name):
     df = pd.read_csv(db_names[name], sep='\t', index_col=0,).T
@@ -28,19 +31,16 @@ class C(Commander):
     def run_hi(self):
         df = load_hiseq_data('brca')
 
-        n = 3
+        pairs = list(itertools.combinations(target_colums, 2))
         fig = plt.figure(figsize=(8, 16))
-        ax = fig.add_subplot(n, 1, 1)
-        ax.set_title('FBXO11 vs HLA-DRA')
-        ax.scatter(df['FBXO11'], df['HLA-DRA'])
 
-        ax = fig.add_subplot(n, 1, 2)
-        ax.set_title('FBXO11 vs CIITA')
-        ax.scatter(df['FBXO11'], df['CIITA'])
+        for i, (a, b) in enumerate(pairs):
+            ax = fig.add_subplot(len(pairs), 1, i + 1)
+            df_a, df_b  = df[a], df[b]
+            r = np.corrcoef(df_a, df_b)[0][1]
+            ax.set_title(f'{a} vs {b} coef={r:.2f}')
+            ax.scatter(df_a, df_b)
 
-        ax = fig.add_subplot(n, 1, 3)
-        ax.set_title('HLA-DRA vs CIITA')
-        ax.scatter(df['HLA-DRA'], df['CIITA'])
         plt.show()
 
     def run_3d(self):
