@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import itertools
 
 import numpy as np
@@ -9,30 +9,36 @@ import pandas as pd
 
 from endaaman import Commander
 
-db_names = OrderedDict({
-    'brca': 'data/TCGA.BRCA.sampleMap_HiSeqV2.txt',
-    'brca_exon': 'data/TCGA.BRCA.sampleMap_HiSeqV2_exon.txt',
-    'brca_pancan': 'data/TCGA.BRCA.sampleMap_HiSeqV2_PANCAN.txt',
-    'paad': 'data/TCGA.PAAD.sampleMap_HiSeqV2.txt',
-    'paad_pancan': 'data/TCGA.PAAD.sampleMap_HiSeqV2_PANCAN.txt',
+Collection = namedtuple('Collection', ['abbr', 'name', 'path'])
+
+collections = OrderedDict({
+    c.abbr:c for c in [
+        Collection('br', 'Breast cancer', 'data/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
+        Collection('pan', 'Pancreatic cancer', 'data/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
+        Collection('colrec',  'Collon rectum cancer', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
+    ]
 })
 
 required_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 target_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 
-def load_hiseq_data(name):
-    df = pd.read_csv(db_names[name], sep='\t', index_col=0,).T
-    print(f'loaded {name}')
+
+def load_hiseq_data(c):
+    df = pd.read_csv(c.path, sep='\t', index_col=0,).T
+    print(f'loaded {c.name} data')
     return df
 
 
 class C(Commander):
+    def arg_hi(self, parser):
+        parser.add_argument('--target', '-t', default='br')
 
     def run_hi(self):
-        df = load_hiseq_data('brca')
+        c = collections[self.args.target]
+        df = load_hiseq_data(c)
 
         pairs = list(itertools.combinations(target_colums, 2))
-        fig = plt.figure(figsize=(8, 16))
+        fig = plt.figure(figsize=(8, 14))
 
         for i, (a, b) in enumerate(pairs):
             ax = fig.add_subplot(len(pairs), 1, i + 1)
@@ -41,7 +47,9 @@ class C(Commander):
             ax.set_title(f'{a} vs {b} coef={r:.2f}')
             ax.scatter(df_a, df_b)
 
+        plt.suptitle(f'{c.name}')
         plt.show()
+        plt.savefig('out/{c.abbr}.png')
 
     def run_3d(self):
         df = load_hiseq_data('brca')
