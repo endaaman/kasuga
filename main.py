@@ -15,7 +15,7 @@ collections = OrderedDict({
     c.abbr:c for c in [
         Collection('br', 'Breast cancer', 'data/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
         Collection('pan', 'Pancreatic cancer', 'data/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
-        Collection('colrec',  'Collon rectum cancer', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
+        Collection('colrec',  'Colon rectum cancer', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
     ]
 })
 
@@ -49,7 +49,7 @@ class C(Commander):
 
         plt.suptitle(f'{c.name}')
         plt.show()
-        plt.savefig('out/{c.abbr}.png')
+        plt.savefig(f'out/{c.abbr}.png')
 
     def run_3d(self):
         df = load_hiseq_data('brca')
