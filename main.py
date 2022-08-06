@@ -47,7 +47,7 @@ class C(Commander):
             ax.set_title(f'{a} vs {b} coef={r:.2f}')
             ax.scatter(df_a, df_b)
 
-        plt.suptitle(f'{c.name}')
+        plt.suptitle(f'{c.name} n={df.shape[0]}')
         plt.show()
         plt.savefig(f'out/{c.abbr}.png')
 
