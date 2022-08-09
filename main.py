@@ -24,7 +24,7 @@ target_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 
 
 def load_hiseq_data(c):
-    df = pd.read_csv(c.path, sep='\t', index_col=0,).T
+    df = pd.read_csv(c.path, sep='\t', index_col=0).T
     print(f'loaded {c.name} data')
     return df
 
