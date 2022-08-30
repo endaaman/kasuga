@@ -13,9 +13,9 @@ Collection = namedtuple('Collection', ['abbr', 'name', 'path'])
 
 collections = OrderedDict({
     c.abbr:c for c in [
-        Collection('br', 'Breast cancer', 'data/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
-        Collection('pan', 'Pancreatic cancer', 'data/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
-        Collection('colrec',  'Colon rectum cancer', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
+        Collection('br', 'Breast cancer', 'data/xena/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
+        Collection('pan', 'Pancreatic cancer', 'data/xena/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
+        Collection('colrec',  'Colon rectum cancer', 'data/xena/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
     ]
 })
 
