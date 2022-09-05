@@ -13,10 +13,10 @@ Collection = namedtuple('Collection', ['abbr', 'name', 'path'])
 
 collections = OrderedDict({
     c.abbr:c for c in [
-        Collection('br', 'Breast cancer', 'data/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
-        Collection('pan', 'Pancreatic cancer', 'data/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
-        Collection('colrec',  'Colon rectum cancer', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
-        Collection('gbm',  'Glioblastoma', 'data/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
+        Collection('brca', 'Breast cancer', 'data/xena/TCGA.BRCA.sampleMap_HiSeqV2.txt'),
+        Collection('paad', 'Pancreatic cancer', 'data/xena/TCGA.PAAD.sampleMap_HiSeqV2.txt'),
+        Collection('colrec',  'Colon rectum cancer', 'data/xena/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
+        Collection('gbm',  'Glioblastoma', 'data/xena/TCGA.COADREAD.sampleMap_HiSeqV2.txt'),
     ]
 })
 
@@ -24,7 +24,8 @@ required_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 target_colums = ['FBXO11', 'HLA-DRA', 'CIITA']
 
 
-def load_hiseq_data(c):
+def load_xena_data(name):
+    c = collections[name]
     df = pd.read_csv(c.path, sep='\t', index_col=0).T
     print(f'loaded {c.name} data')
     return df
@@ -35,8 +36,7 @@ class C(Commander):
         parser.add_argument('--target', '-t', default='br')
 
     def run_hi(self):
-        c = collections[self.args.target]
-        df = load_hiseq_data(c)
+        df = load_xena_data(self.args.target)
 
         pairs = list(itertools.combinations(target_colums, 2))
         fig = plt.figure(figsize=(8, 14))
@@ -53,7 +53,7 @@ class C(Commander):
         plt.savefig(f'out/{c.abbr}.png')
 
     def run_3d(self):
-        df = load_hiseq_data('brca')
+        df = load_xena_data('brca')
 
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(1, 1, 1, projection='3d')
@@ -65,6 +65,6 @@ class C(Commander):
         plt.show()
 
 
-
-c = C()
-c.run()
+if __name__ == '__main__':
+    c = C()
+    c.run()

@@ -129,5 +129,6 @@ class C(Commander):
         df.to_csv(p, sep='\t')
         print(f'saved {p}')
 
-c = C()
-c.run()
+if __name__ == '__main__':
+    c = C()
+    c.run()
