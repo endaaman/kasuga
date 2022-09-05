@@ -95,12 +95,16 @@ class C(Commander):
                 'name': i,
             })
             for (a, b) in combinations(self.target_cols, 2):
-                aa = v[v['gene'] == a]['value'].values
-                bb = v[v['gene'] == b]['value'].values
+                aa = v[v['gene'] == a]['value']
+                bb = v[v['gene'] == b]['value']
 
                 lr = LinearRegression()
-                lr.fit(aa.reshape(-1, 1), bb)
-                # row[f'{a} vs {b} coef'] = f'{lr.coef_[0]:.3f}'
+                lr.fit(aa.values.reshape(-1, 1), bb.values)
+                row[f'{a} vs {b} coef'] = f'{lr.coef_[0]:.3f}'
+
+                corr = aa.corr(bb)
+
+                row[f'{a} vs {b} corr'] = f'{corr:.3f}'
 
                 # X = aa.reshape(-1, 1)
                 # y = bb
@@ -114,11 +118,11 @@ class C(Commander):
                 # p = [2*(1-stats.t.cdf(np.abs(t_val),(len(X_)-len(X_[0])))) for t_val in t]
                 # row[f'{a} vs {b} p-value2'] = f'{p[1]:.6f}'
 
-                aa2 = sma.add_constant(aa)
-                est = sma.OLS(bb, aa2)
-                r = est.fit()
-                row[f'{a} vs {b} coef'] = f'{float(r.params[1]):.6f}'
-                row[f'{a} vs {b} p-value'] = f'{float(r.pvalues[1]):.6f}'
+                # aa2 = sma.add_constant(aa)
+                # est = sma.OLS(bb, aa2)
+                # r = est.fit()
+                # row[f'{a} vs {b} coef'] = f'{float(r.params[1]):.6f}'
+                # row[f'{a} vs {b} p-value'] = f'{float(r.pvalues[1]):.6f}'
 
             data.append(row)
 
