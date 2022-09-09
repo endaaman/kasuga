@@ -1,10 +1,11 @@
+import os
+import pickle
 from collections import OrderedDict, namedtuple
-import itertools
 from itertools import combinations
 
 import numpy as np
 import pandas as pd
-import pickle
+from tqdm import tqdm
 import seaborn as sns
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
@@ -16,8 +17,9 @@ from endaaman import Commander
 
 
 class C(Commander):
-    def run_cache(self):
-        df = pd.read_csv('./data/gtex/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct', sep='\t', skiprows=2, index_col=0)
+    def make_v8_kasuga_cache(self):
+        # df = pd.read_csv('./data/gtex/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct', sep='\t', skiprows=2, index_col=0)
+        # 56200 genes
         # print(df.shape)
         # In [9]: np.where(df.index.isin(['FBXO11',  'CIITA', 'HLA-DRA', ]))
         # Out[9]: (array([ 5820, 18006, 41214]),)
@@ -26,68 +28,79 @@ class C(Commander):
         skip = np.arange(56203)
         # skip = np.delete(skip, [2, 5822, 18008, 41216])
         skip = np.delete(skip, [2, 5823, 18009, 41217])
+        print('loading original data..')
         df = pd.read_csv('./data/gtex/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct', sep='\t', skiprows=skip, index_col=1)
-        df.to_pickle('data/gtex/v8cache.pickle')
+        df.to_pickle('data/gtex/v8_kasuga_cache.pickle')
+        return df
 
-    def pre_common(self):
-        with open('data/gtex/v8cache.pickle', 'rb') as f:
-            df = pickle.load(f)
-        df = df.drop(columns=['Name']).T
+    target_cols = ['FBXO11', 'CIITA', 'HLA-DRA']
 
-        self.ll = pd.read_csv('./data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt', sep='\t',  index_col=0)['SMTS']
+    def load_v8_kasuga(self):
+        p = 'data/gtex/v8_kasuga_cache.pickle'
+        if os.path.exists(p):
+            df = pickle.load(open(p, 'rb'))
+        else:
+            df = self.make_v8_kasuga_cache()
 
-        mm = pd.merge(df, self.ll, how='left', left_index=True, right_index=True)
+        values = df.drop(columns=['Name']).T
+        labels = pd.read_csv('./data/gtex/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt', sep='\t',  index_col=0)[['SMTS']]
 
-        self.target_cols = ['FBXO11', 'CIITA', 'HLA-DRA']
+        merged = pd.merge(values, labels['SMTS'], how='left', left_index=True, right_index=True)
         tmps = []
         for col in self.target_cols:
-            tmp = mm[['SMTS', col]]
+            tmp = merged[['SMTS', col]]
             tmp = tmp.rename(columns={col: 'value'})
             tmp['gene'] = col
             tmps.append(tmp)
 
-        self.vv = pd.concat(tmps)
-        self.vv['value'] = np.log2(self.vv['value'] )
+        vv = pd.concat(tmps)
+        vv['value'] = np.log2(vv['value'])
 
+        return values, labels, vv
+
+
+    def arg_violin(self, parser):
+        parser.add_argument('-b', '--by', choices=['tissue', 'gene'], default='tissue')
 
     def run_violin(self):
         ''' 3遺伝子セットで組織ごとにプロット
         '''
-        fig = plt.figure()
-        split_count = 4
-        for i, cols in enumerate(np.array_split(vv['SMTS'].unique(), split_count)):
-            ax = fig.add_subplot(split_count, 1, i + 1)
-            v = vv[vv['SMTS'].isin(cols)]
-            sns.violinplot(x='SMTS', y='value', data=v, hue='gene', dodge=True,
-                          jitter=True, color='black', palette='Set3', ax=ax)
-            ax.set_ylabel('log2(TPM)')
-            ax.tick_params(axis='x', labelrotation=45)
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.7))
+        _, _, vv = self.load_v8_kasuga()
+        vv.to_csv('out/violin.tsv', sep='\t')
+        fig = plt.figure(figsize=(20, 10))
+
+        if self.args.by == 'tissue':
+            split_count = 4
+            for i, cols in enumerate(np.array_split(vv['SMTS'].unique(), split_count)):
+                ax = fig.add_subplot(split_count, 1, i + 1)
+                v = vv[vv['SMTS'].isin(cols)]
+                sns.violinplot(x='SMTS', y='value', data=v, hue='gene', dodge=True,
+                              jitter=True, color='black', palette='Set3', ax=ax)
+                ax.set_ylabel('log2(TPM)')
+                ax.tick_params(axis='x', labelrotation=20)
+                ax.set_xlabel('')
+                ax.legend(loc='center left', bbox_to_anchor=(1, 0.7))
+
+        elif self.args.by == 'gene':
+            for i, col in enumerate(self.target_cols):
+                ax = fig.add_subplot(len(self.target_cols), 1, i + 1)
+                v = vv[vv['gene'] == col]
+                ax.set_title(col)
+                sns.violinplot(x='SMTS', y='value', data=v, dodge=True,
+                              jitter=True, color='black', palette='Set3', ax=ax)
+                ax.set_ylabel('log2(TPM)')
+                ax.tick_params(axis='x', labelrotation=45)
+                ax.set_xlabel('')
 
         plt.subplots_adjust(hspace=0.6)
+        plt.savefig(f'out/violin_by_{self.args.by}.png')
         plt.show()
-
-    def run_violin(self):
-        ''' 遺伝子別に組織ごとにプロット
-        '''
-        fig = plt.figure()
-        for i, col in enumerate(self.target_cols):
-            ax = fig.add_subplot(len(self.target_cols), 1, i + 1)
-            v = vv[vv['gene'] == col]
-            ax.set_title(col)
-            sns.violinplot(x='SMTS', y='value', data=v, dodge=True,
-                          jitter=True, color='black', palette='Set3', ax=ax)
-            ax.set_ylabel('log2(TPM)')
-            ax.tick_params(axis='x', labelrotation=45)
-
-        plt.subplots_adjust(hspace=0.6)
-        plt.show()
-
 
     def run_coef(self):
         '''部位ごとの3遺伝子の相関、p valueを算出
         '''
-        ii = self.vv.groupby('SMTS')
+        _, _, vv = self.load_v8_kasuga()
+        ii = vv.groupby('SMTS')
 
         data = []
         for (i, v) in ii:
@@ -103,26 +116,8 @@ class C(Commander):
                 row[f'{a} vs {b} coef'] = f'{lr.coef_[0]:.3f}'
 
                 corr = aa.corr(bb)
-
                 row[f'{a} vs {b} corr'] = f'{corr:.3f}'
 
-                # X = aa.reshape(-1, 1)
-                # y = bb
-                # X_ = np.append(np.ones((len(X),1)), X, axis=1)
-                # theta = np.append(lr.intercept_, lr.coef_)
-                # y_preds = lr.predict(X)
-                # RSS = np.sum((y-y_preds)**2)
-                # RSE = np.sqrt(RSS/(len(X_)-len(X_[0])))
-                # SE_sq = RSE**2 * np.linalg.inv(np.dot(X_.T,X_)).diagonal()
-                # t = theta/np.sqrt(SE_sq)
-                # p = [2*(1-stats.t.cdf(np.abs(t_val),(len(X_)-len(X_[0])))) for t_val in t]
-                # row[f'{a} vs {b} p-value2'] = f'{p[1]:.6f}'
-
-                # aa2 = sma.add_constant(aa)
-                # est = sma.OLS(bb, aa2)
-                # r = est.fit()
-                # row[f'{a} vs {b} coef'] = f'{float(r.params[1]):.6f}'
-                # row[f'{a} vs {b} p-value'] = f'{float(r.pvalues[1]):.6f}'
 
             data.append(row)
 
@@ -132,6 +127,21 @@ class C(Commander):
         p = 'out/coef.tsv'
         df.to_csv(p, sep='\t')
         print(f'saved {p}')
+
+    def run_calc_coef(self):
+        df = pd.read_csv('data/gtex/gene_reads_2017-06-05_v8_liver.gct', sep='\t', skiprows=2, index_col=2)
+        df.drop(columns=['id', 'Name'], inplace=True)
+        self.df = df
+        return
+
+        t = tqdm(list(combinations(df.columns, 2)))
+        for (a, b) in t:
+            pass
+            # t.set_description(f'{a} {b}')
+            # t.refresh()
+            # print(a, b)
+            # df[a]
+            # df[b]
 
 if __name__ == '__main__':
     c = C()
